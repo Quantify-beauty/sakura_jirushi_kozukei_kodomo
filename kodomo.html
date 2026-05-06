@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌸 印のお小遣い計算機 🌸 こども用</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --sakura:#ffd6e0;
+  --sakura-deep:#ff9bb3;
+  --sakura-dark:#d8537a;
+  --cream:#fff8f3;
+  --gold:#c9a961;
+  --ink:#3d2a35;
+  --leaf:#a8c7a3;
+  --shadow:0 4px 20px rgba(216,83,122,.15);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;background:var(--cream);color:var(--ink);min-height:100vh}
+body{
+  background:
+    radial-gradient(ellipse at top left, rgba(255,214,224,.4), transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(255,155,179,.25), transparent 50%),
+    var(--cream);
+  padding:0 0 80px;
+}
+
+/* 背景の桜花びら */
+.petals{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.petal{position:absolute;font-size:20px;opacity:.4;animation:fall linear infinite}
+@keyframes fall{
+  0%{transform:translateY(-10vh) rotate(0deg)}
+  100%{transform:translateY(110vh) rotate(360deg)}
+}
+
+/* ヘッダー */
+header{
+  position:relative;z-index:1;
+  text-align:center;padding:32px 20px 24px;
+  background:linear-gradient(180deg, rgba(255,214,224,.6), transparent);
+  border-bottom:1px solid rgba(216,83,122,.15);
+}
+header h1{
+  font-size:clamp(20px,5vw,28px);font-weight:600;letter-spacing:.05em;
+  color:var(--sakura-dark);
+}
+header .sub{margin-top:6px;font-size:13px;color:#8a6f7a;letter-spacing:.1em}
+
+/* メインカード */
+main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:20px 16px}
+
+.card{
+  background:#fff;border-radius:20px;padding:20px;margin-bottom:16px;
+  box-shadow:var(--shadow);
+  border:1px solid rgba(216,83,122,.1);
+}
+
+/* 期間表示 */
+.period-card{
+  background:linear-gradient(135deg,#fff,#fff8fa);
+  text-align:center;
+}
+.period-label{font-size:12px;color:#8a6f7a;letter-spacing:.2em;margin-bottom:6px}
+.period-value{font-size:18px;font-weight:600;color:var(--ink);margin-bottom:14px}
+.week-tabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.week-tab{
+  flex:1;min-width:60px;padding:8px 4px;border:1.5px solid var(--sakura);
+  border-radius:12px;background:#fff;cursor:pointer;font-size:11px;
+  color:var(--ink);transition:all .2s;font-family:inherit;
+}
+.week-tab.active{background:var(--sakura-deep);color:#fff;border-color:var(--sakura-deep);font-weight:600}
+.week-tab .num{display:block;font-size:16px;font-weight:600;margin-bottom:2px}
+
+/* 合計ポイント */
+.total-card{
+  background:linear-gradient(135deg, var(--sakura-deep), var(--sakura-dark));
+  color:#fff;text-align:center;padding:24px 20px;
+  position:relative;overflow:hidden;
+}
+.total-card::before{
+  content:"🌸";position:absolute;top:-10px;right:-10px;font-size:80px;opacity:.15;
+  transform:rotate(20deg);
+}
+.total-card::after{
+  content:"🌸";position:absolute;bottom:-15px;left:-10px;font-size:60px;opacity:.15;
+  transform:rotate(-15deg);
+}
+.total-label{font-size:12px;letter-spacing:.2em;opacity:.9;margin-bottom:8px}
+.total-points{font-size:42px;font-weight:600;letter-spacing:.02em;line-height:1}
+.total-points small{font-size:18px;font-weight:400;margin-left:4px}
+.total-yen{margin-top:8px;font-size:14px;opacity:.95;letter-spacing:.1em}
+.bonus-line{margin-top:10px;font-size:11px;opacity:.85}
+
+/* 曜日セクション */
+.day-card h3{
+  font-size:14px;color:var(--sakura-dark);margin-bottom:12px;
+  padding-bottom:8px;border-bottom:1.5px dashed rgba(216,83,122,.2);
+  display:flex;align-items:center;gap:8px;letter-spacing:.05em;
+}
+.day-card h3 .date{margin-left:auto;font-size:11px;color:#8a6f7a;font-weight:400}
+
+/* タスクボタン */
+.tasks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.task{
+  position:relative;
+  padding:12px 8px;border-radius:14px;cursor:pointer;
+  background:#fff8fa;border:2px solid #ffe4ec;
+  transition:all .25s cubic-bezier(.4,0,.2,1);
+  text-align:center;font-family:inherit;color:var(--ink);
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  min-height:78px;justify-content:center;
+}
+.task.full{grid-column:1/-1}
+.task .emoji{font-size:24px;line-height:1}
+.task .label{font-size:11px;line-height:1.3;letter-spacing:.02em}
+.task .pts{font-size:10px;color:var(--gold);font-weight:600}
+.task.checked{
+  background:linear-gradient(135deg, var(--sakura-deep), var(--sakura-dark));
+  border-color:var(--sakura-dark);color:#fff;
+  transform:scale(.98);
+  box-shadow:inset 0 2px 8px rgba(0,0,0,.15);
+}
+.task.checked .pts{color:#fff8c0}
+.task.checked::before{
+  content:"✓";position:absolute;top:4px;right:6px;
+  font-size:14px;font-weight:bold;
+}
+.task:active{transform:scale(.95)}
+
+/* 週の小計 */
+.week-sum{
+  text-align:center;font-size:12px;color:#8a6f7a;
+  margin-top:10px;padding-top:10px;border-top:1px dotted rgba(216,83,122,.2);
+}
+.week-sum strong{color:var(--sakura-dark);font-size:16px}
+
+/* ボタン群 */
+.actions{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.btn{
+  padding:14px 18px;border:none;border-radius:14px;cursor:pointer;
+  font-family:inherit;font-size:15px;font-weight:600;letter-spacing:.05em;
+  transition:transform .15s, box-shadow .15s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn:active{transform:scale(.97)}
+.btn-primary{
+  background:linear-gradient(135deg, var(--sakura-deep), var(--sakura-dark));
+  color:#fff;box-shadow:0 4px 14px rgba(216,83,122,.35);
+}
+.btn-secondary{
+  background:#fff;color:var(--sakura-dark);
+  border:2px solid var(--sakura-deep);
+}
+.btn-ghost{
+  background:rgba(255,214,224,.4);color:var(--sakura-dark);
+  border:1px dashed var(--sakura-deep);font-size:13px;padding:10px;
+}
+
+/* コードボックス */
+.code-box{
+  display:none;margin-top:14px;padding:14px;
+  background:linear-gradient(135deg,#fff8e1,#fff);
+  border:1.5px dashed var(--gold);border-radius:12px;
+}
+.code-box.show{display:block}
+.code-box-label{font-size:11px;color:var(--gold);font-weight:600;letter-spacing:.2em;margin-bottom:8px}
+.code-text{
+  font-family:"Courier New",monospace;font-size:11px;
+  background:#fff;padding:10px;border-radius:8px;border:1px solid #f0e4c8;
+  word-break:break-all;line-height:1.5;color:var(--ink);
+  max-height:120px;overflow-y:auto;
+}
+.copy-hint{font-size:10px;color:#8a6f7a;margin-top:6px;text-align:center}
+
+/* トースト */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120%);
+  background:var(--ink);color:#fff;padding:12px 20px;border-radius:30px;
+  font-size:13px;letter-spacing:.05em;z-index:100;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);transition:transform .3s;
+  pointer-events:none;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* フッター装飾 */
+.footer-deco{
+  text-align:center;margin-top:30px;font-size:14px;color:var(--sakura-deep);
+  letter-spacing:1em;opacity:.6;
+}
+
+/* 達成度バー */
+.progress-wrap{margin-top:14px;background:rgba(255,255,255,.3);border-radius:30px;height:6px;overflow:hidden}
+.progress-bar{height:100%;background:linear-gradient(90deg, #fff, #fff8c0);transition:width .5s;border-radius:30px}
+
+/* カスタム確認ダイアログ */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(61,42,53,.5);
+  display:none;align-items:center;justify-content:center;
+  z-index:200;padding:20px;backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+}
+.modal-bg.show{display:flex;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  background:#fff;border-radius:20px;padding:24px 22px;
+  max-width:340px;width:100%;text-align:center;
+  box-shadow:0 20px 50px rgba(216,83,122,.3);
+  border:2px solid var(--sakura);
+  animation:popIn .25s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes popIn{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-emoji{font-size:42px;margin-bottom:8px}
+.modal-title{font-size:16px;font-weight:600;color:var(--sakura-dark);margin-bottom:8px}
+.modal-text{font-size:13px;color:var(--ink);line-height:1.6;margin-bottom:18px;opacity:.85}
+.modal-btns{display:flex;gap:10px}
+.modal-btn{
+  flex:1;padding:12px;border:none;border-radius:12px;cursor:pointer;
+  font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.05em;
+  transition:transform .15s;
+}
+.modal-btn:active{transform:scale(.95)}
+.modal-btn.cancel{background:#f0e4e8;color:var(--ink)}
+.modal-btn.ok{background:linear-gradient(135deg, var(--sakura-deep), var(--sakura-dark));color:#fff}
+</style>
+</head>
+<body>
+<div class="petals" id="petals"></div>
+
+<header>
+  <h1>🌸 印のお小遣い計算機 🌸</h1>
+  <div class="sub">こども 用</div>
+</header>
+
+<main>
+  <!-- 期間表示 -->
+  <div class="card period-card">
+    <div class="period-label">— 今月の期間 —</div>
+    <div class="period-value" id="periodValue">25日締め</div>
+    <div class="week-tabs" id="weekTabs"></div>
+  </div>
+
+  <!-- 合計ポイント -->
+  <div class="card total-card">
+    <div class="total-label">— TOTAL POINTS —</div>
+    <div class="total-points"><span id="totalPoints">2000</span><small>pt</small></div>
+    <div class="total-yen">¥<span id="totalYen">2,000</span></div>
+    <div class="bonus-line">持ち点 2,000pt + がんばりポイント</div>
+    <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:25.9%"></div></div>
+  </div>
+
+  <!-- 曜日カレンダー -->
+  <div id="dayCards"></div>
+
+  <!-- 操作ボタン -->
+  <div class="actions">
+    <button class="btn btn-primary" id="btnSendCode">📨 コードを送る</button>
+    <button class="btn btn-secondary" id="btnPdf">📄 PDFにする</button>
+    <button class="btn btn-ghost" id="btnReset">この週をリセット</button>
+  </div>
+
+  <!-- コード表示 -->
+  <div class="code-box" id="codeBox">
+    <div class="code-box-label">▼ おやに送るコード ▼</div>
+    <div class="code-text" id="codeText"></div>
+    <div class="copy-hint">タップしてコピー → LINEなどで送信</div>
+  </div>
+
+  <div class="footer-deco">🌸 ・ 🌸 ・ 🌸</div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- カスタム確認ダイアログ -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-emoji" id="modalEmoji">🌸</div>
+    <div class="modal-title" id="modalTitle">確認</div>
+    <div class="modal-text" id="modalText"></div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" id="modalCancel">やめる</button>
+      <button class="modal-btn ok" id="modalOk">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== 設定 ==========
+const TASKS = [
+  {id:'sleep',  emoji:'💤', label:'自室で寝る',         pts:10, full:false},
+  {id:'dish',   emoji:'🫧', label:'お皿を洗う',         pts:50, full:false},
+  {id:'wash',   emoji:'✨', label:'洗面所をキレイに',   pts:50, full:false},
+  {id:'bento',  emoji:'🍱', label:'弁当箱と水筒を出す', pts:25, full:false},
+  {id:'clothes',emoji:'👕', label:'洗濯物を片付ける',   pts:50, full:true },
+];
+const BASE_POINTS = 2000;
+const STORAGE_KEY = 'okozukai_kodomo_v1';
+const DAYS = ['日','月','火','水','木','金','土'];
+
+// ========== 期間計算（25日締め） ==========
+function getCurrentPeriod(date = new Date()){
+  const d = new Date(date);
+  let year = d.getFullYear();
+  let month = d.getMonth(); // 0-11
+  // 25日以前なら、当月25日が締め日（前月26日〜当月25日）
+  // 26日以降なら、翌月25日が締め日（当月26日〜翌月25日）
+  if(d.getDate() >= 26){
+    month += 1;
+    if(month > 11){month = 0; year += 1;}
+  }
+  // 期間: 前月26日 〜 当月25日
+  const endDate = new Date(year, month, 25);
+  const startDate = new Date(year, month - 1, 26);
+  return {year, month: month+1, startDate, endDate};
+}
+
+// 期間内を週ごとに分割（月曜始まり）
+function getWeeks(period){
+  const weeks = [];
+  let cur = new Date(period.startDate);
+  // 最初の週: 開始日からその週の日曜まで
+  let weekStart = new Date(cur);
+  let weekDays = [];
+  while(cur <= period.endDate){
+    weekDays.push(new Date(cur));
+    if(cur.getDay() === 0 || cur.getTime() === period.endDate.getTime()){
+      weeks.push({start:new Date(weekStart), end:new Date(cur), days:weekDays});
+      cur.setDate(cur.getDate()+1);
+      weekStart = new Date(cur);
+      weekDays = [];
+      continue;
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  if(weekDays.length>0){
+    weeks.push({start:weekStart, end:weekDays[weekDays.length-1], days:weekDays});
+  }
+  return weeks;
+}
+
+// ========== 状態管理 ==========
+let state = loadState();
+const period = getCurrentPeriod();
+const weeks = getWeeks(period);
+let activeWeekIdx = getActiveWeekIdx();
+
+function getActiveWeekIdx(){
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  for(let i=0;i<weeks.length;i++){
+    if(today >= weeks[i].start && today <= weeks[i].end) return i;
+  }
+  return 0;
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return {checks:{}}; // {checks: {"2026-05-01": {sleep:true, ...}}}
+}
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+}
+function dateKey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function getCheck(d, taskId){
+  const k = dateKey(d);
+  return !!(state.checks[k] && state.checks[k][taskId]);
+}
+function setCheck(d, taskId, val){
+  const k = dateKey(d);
+  if(!state.checks[k]) state.checks[k] = {};
+  state.checks[k][taskId] = val;
+  saveState();
+}
+
+// ========== 計算 ==========
+function calcWeekPoints(week){
+  let total = 0;
+  for(const d of week.days){
+    for(const t of TASKS){
+      if(getCheck(d, t.id)) total += t.pts;
+    }
+  }
+  return total;
+}
+function calcMonthPoints(){
+  let total = 0;
+  for(const w of weeks) total += calcWeekPoints(w);
+  return total;
+}
+function calcMaxMonthPoints(){
+  // 全タスク全日達成時の上限
+  let total = 0;
+  const dailyMax = TASKS.reduce((s,t)=>s+t.pts, 0);
+  for(const w of weeks) total += w.days.length * dailyMax;
+  return total;
+}
+
+// ========== 描画 ==========
+function fmt(d){return (d.getMonth()+1)+'/'+d.getDate()+'('+DAYS[d.getDay()]+')';}
+
+function renderPeriod(){
+  document.getElementById('periodValue').textContent = 
+    `${period.startDate.getFullYear()}年 ${period.startDate.getMonth()+1}/${period.startDate.getDate()} 〜 ${period.endDate.getMonth()+1}/${period.endDate.getDate()}`;
+  
+  const tabs = document.getElementById('weekTabs');
+  tabs.innerHTML = '';
+  weeks.forEach((w,i)=>{
+    const btn = document.createElement('button');
+    btn.className = 'week-tab' + (i===activeWeekIdx?' active':'');
+    btn.innerHTML = `<span class="num">第${i+1}週</span>${fmt(w.start)}〜${fmt(w.end)}`;
+    btn.onclick = ()=>{activeWeekIdx=i; render();};
+    tabs.appendChild(btn);
+  });
+}
+
+function renderTotal(){
+  const earned = calcMonthPoints();
+  const total = BASE_POINTS + earned;
+  const max = BASE_POINTS + calcMaxMonthPoints();
+  document.getElementById('totalPoints').textContent = total.toLocaleString();
+  document.getElementById('totalYen').textContent = total.toLocaleString();
+  document.getElementById('progressBar').style.width = Math.min(100, total/max*100)+'%';
+}
+
+function renderDays(){
+  const wrap = document.getElementById('dayCards');
+  wrap.innerHTML = '';
+  const week = weeks[activeWeekIdx];
+  
+  week.days.forEach(d=>{
+    const card = document.createElement('div');
+    card.className = 'card day-card';
+    
+    const dayPts = TASKS.reduce((s,t)=>s+(getCheck(d,t.id)?t.pts:0), 0);
+    const isToday = dateKey(d) === dateKey(new Date());
+    
+    card.innerHTML = `
+      <h3>
+        <span>${DAYS[d.getDay()]}曜日 ${isToday?'🌸 ':''}</span>
+        <span class="date">${d.getMonth()+1}月${d.getDate()}日</span>
+      </h3>
+      <div class="tasks">
+        ${TASKS.map(t=>{
+          const checked = getCheck(d, t.id);
+          return `
+            <button class="task ${t.full?'full':''} ${checked?'checked':''}" 
+                    data-date="${dateKey(d)}" data-task="${t.id}">
+              <span class="emoji">${t.emoji}</span>
+              <span class="label">${t.label}</span>
+              <span class="pts">+${t.pts}pt</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+      <div class="week-sum">この日の獲得 → <strong>${dayPts}</strong> pt</div>
+    `;
+    wrap.appendChild(card);
+  });
+  
+  // クリックイベント
+  wrap.querySelectorAll('.task').forEach(btn=>{
+    btn.onclick = ()=>{
+      const dk = btn.dataset.date;
+      const tid = btn.dataset.task;
+      const cur = !!(state.checks[dk] && state.checks[dk][tid]);
+      const dParts = dk.split('-').map(Number);
+      const d = new Date(dParts[0], dParts[1]-1, dParts[2]);
+      setCheck(d, tid, !cur);
+      btn.classList.toggle('checked');
+      renderTotal();
+      renderWeekSum();
+    };
+  });
+  
+  renderWeekSum();
+}
+
+function renderWeekSum(){
+  // 各day-cardのweek-sumを更新
+  const week = weeks[activeWeekIdx];
+  const cards = document.querySelectorAll('.day-card');
+  week.days.forEach((d,i)=>{
+    const dayPts = TASKS.reduce((s,t)=>s+(getCheck(d,t.id)?t.pts:0), 0);
+    if(cards[i]){
+      const sumEl = cards[i].querySelector('.week-sum strong');
+      if(sumEl) sumEl.textContent = dayPts;
+    }
+  });
+}
+
+function render(){
+  renderPeriod();
+  renderTotal();
+  renderDays();
+}
+
+// ========== コード生成 ==========
+function generateCode(){
+  const week = weeks[activeWeekIdx];
+  const data = {
+    v:1,
+    y:period.startDate.getFullYear(),
+    m:period.month,
+    w:activeWeekIdx+1,
+    s:dateKey(week.start),
+    e:dateKey(week.end),
+    c:{}
+  };
+  for(const d of week.days){
+    const k = dateKey(d);
+    if(state.checks[k]){
+      const arr = TASKS.filter(t=>state.checks[k][t.id]).map(t=>t.id);
+      if(arr.length>0) data.c[k] = arr;
+    }
+  }
+  const json = JSON.stringify(data);
+  // Base64エンコード（日本語含むのでencodeURIComponent経由）
+  const code = '🌸RBCODE🌸\n' + btoa(unescape(encodeURIComponent(json)));
+  
+  const box = document.getElementById('codeBox');
+  const txt = document.getElementById('codeText');
+  txt.textContent = code;
+  box.classList.add('show');
+  
+  // タップでコピー
+  txt.onclick = ()=>{
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(code).then(()=>{
+        showToast('コードをコピーしたよ！');
+      }).catch(()=>fallbackCopy(code));
+    }else{
+      fallbackCopy(code);
+    }
+  };
+  
+  // 自動コピー試行
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(code).then(()=>{
+      showToast('📋 コードをコピー！おやに送ってね');
+    }).catch(()=>showToast('コードをタップしてコピーしてね'));
+  }else{
+    showToast('コードをタップしてコピーしてね');
+  }
+  
+  box.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function fallbackCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  try{document.execCommand('copy'); showToast('コピーしたよ！');}catch(e){}
+  document.body.removeChild(ta);
+}
+
+// ========== PDF出力 ==========
+function downloadPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const week = weeks[activeWeekIdx];
+  
+  // ヘッダー
+  doc.setFillColor(255, 155, 179);
+  doc.rect(0, 0, 210, 25, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(16);
+  doc.text('* Okozukai Calculator *  Kodomo', 105, 13, {align:'center'});
+  doc.setFontSize(9);
+  doc.text(`Week ${activeWeekIdx+1} : ${dateKey(week.start)} - ${dateKey(week.end)}`, 105, 20, {align:'center'});
+  
+  doc.setTextColor(61,42,53);
+  let y = 38;
+  doc.setFontSize(11);
+  doc.text(`Period: ${dateKey(period.startDate)} - ${dateKey(period.endDate)}`, 14, y); y+=8;
+  
+  // 各日の表
+  doc.setFontSize(9);
+  const headers = ['Date','Day','sleep(10)','dish(50)','wash(50)','bento(25)','clothes(50)','Total'];
+  const colX = [14, 38, 56, 80, 104, 128, 152, 178];
+  
+  doc.setFillColor(255,214,224);
+  doc.rect(12, y-4, 186, 7, 'F');
+  doc.setFont(undefined, 'bold');
+  headers.forEach((h,i)=>doc.text(h, colX[i], y));
+  y+=7;
+  doc.setFont(undefined, 'normal');
+  
+  let weekTotal = 0;
+  week.days.forEach((d,idx)=>{
+    if(idx%2===0){doc.setFillColor(255,248,250); doc.rect(12, y-4, 186, 7, 'F');}
+    const k = dateKey(d);
+    const ch = state.checks[k] || {};
+    let dayTotal = 0;
+    doc.text(`${d.getMonth()+1}/${d.getDate()}`, colX[0], y);
+    doc.text(DAYS[d.getDay()], colX[1], y);
+    TASKS.forEach((t,i)=>{
+      const v = ch[t.id]?'O':'-';
+      doc.text(v, colX[2+i]+6, y);
+      if(ch[t.id]) dayTotal += t.pts;
+    });
+    doc.text(String(dayTotal), colX[7]+2, y);
+    weekTotal += dayTotal;
+    y+=7;
+  });
+  
+  // 週合計
+  y+=4;
+  doc.setFillColor(216,83,122);
+  doc.rect(12, y-5, 186, 9, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont(undefined, 'bold');
+  doc.setFontSize(11);
+  doc.text(`Week Total :  ${weekTotal} pt   ( ¥${weekTotal.toLocaleString()} )`, 105, y, {align:'center'});
+  
+  // 月合計
+  y+=14;
+  doc.setTextColor(61,42,53);
+  doc.setFontSize(10);
+  const monthEarned = calcMonthPoints();
+  const monthTotal = BASE_POINTS + monthEarned;
+  doc.text(`Month so far : Base 2000 + Earned ${monthEarned} = ${monthTotal} pt  ( ¥${monthTotal.toLocaleString()} )`, 105, y, {align:'center'});
+  
+  // フッター
+  doc.setFontSize(8);
+  doc.setTextColor(150,150,150);
+  doc.text(`Generated: ${new Date().toLocaleString('ja-JP')}`, 105, 285, {align:'center'});
+  
+  doc.save(`okozukai_kodomo_w${activeWeekIdx+1}.pdf`);
+  showToast('📄 PDFを保存したよ');
+}
+
+// ========== カスタム確認ダイアログ ==========
+function showModal({emoji='🌸', title='確認', text='', okText='OK', cancelText='やめる'}){
+  return new Promise(resolve=>{
+    const bg = document.getElementById('modalBg');
+    document.getElementById('modalEmoji').textContent = emoji;
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalText').textContent = text;
+    const okBtn = document.getElementById('modalOk');
+    const cancelBtn = document.getElementById('modalCancel');
+    okBtn.textContent = okText;
+    cancelBtn.textContent = cancelText;
+    bg.classList.add('show');
+    
+    const cleanup = (result)=>{
+      bg.classList.remove('show');
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+      bg.onclick = null;
+      resolve(result);
+    };
+    okBtn.onclick = (e)=>{e.stopPropagation();cleanup(true);};
+    cancelBtn.onclick = (e)=>{e.stopPropagation();cleanup(false);};
+    bg.onclick = (e)=>{ if(e.target===bg) cleanup(false); };
+  });
+}
+
+// ========== その他 ==========
+async function resetWeek(){
+  const ok = await showModal({
+    emoji:'🌀',
+    title:'この週をリセット？',
+    text:'チェックを全部外して、点数を0にします。\n本当にリセットしますか？',
+    okText:'リセット',
+    cancelText:'やめる'
+  });
+  if(!ok) return;
+  const week = weeks[activeWeekIdx];
+  for(const d of week.days){
+    delete state.checks[dateKey(d)];
+  }
+  saveState();
+  // コードボックスも閉じる
+  const codeBox = document.getElementById('codeBox');
+  if(codeBox) codeBox.classList.remove('show');
+  render();
+  showToast('🌸 リセットしたよ');
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+// 桜花びら背景
+function makePetals(){
+  const wrap = document.getElementById('petals');
+  for(let i=0;i<14;i++){
+    const p = document.createElement('div');
+    p.className = 'petal';
+    p.textContent = ['🌸','🌸','🌸','💮','🌸'][i%5];
+    p.style.left = (Math.random()*100)+'%';
+    p.style.animationDuration = (12+Math.random()*18)+'s';
+    p.style.animationDelay = (-Math.random()*20)+'s';
+    p.style.fontSize = (14+Math.random()*16)+'px';
+    p.style.opacity = .25+Math.random()*.3;
+    wrap.appendChild(p);
+  }
+}
+
+// ========== 起動 ==========
+makePetals();
+render();
+
+// ボタンのイベント配線（addEventListenerで確実に）
+document.getElementById('btnSendCode').addEventListener('click', generateCode);
+document.getElementById('btnPdf').addEventListener('click', downloadPDF);
+document.getElementById('btnReset').addEventListener('click', resetWeek);
+</script>
+</body>
+</html>
